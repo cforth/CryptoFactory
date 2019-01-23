@@ -1,10 +1,10 @@
-import hashlib
 import base64
 from functools import partial
 import os
 import re
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import pad, unpad
+from CryptoFactory.Key import gen_aes_key
 
 # 读写文件时，每次读写的数据量
 BUFFER_SIZE = 10 * 1024 * 1024
@@ -21,7 +21,7 @@ def dir_path_handle(path_string, name_handle_func):
 class BaseCrypto(object):
     def __init__(self, password, iv_str=None, salt=None, use_md5=False, use_urlsafe=False, buffer_size=BUFFER_SIZE):
         # 生成密钥时，选择是否加盐，是否使用md5值
-        self.key = self.gen_aes_key(password, salt, use_md5)
+        self.key = gen_aes_key(password, salt, use_md5)
         # 使用base64模块将字节转与字符串互相转换时，是否用urlsafe模式
         self.use_urlsafe = use_urlsafe
         # 处理文件时，指定每次读写的数据量
@@ -57,40 +57,6 @@ class BaseCrypto(object):
     @property
     def iv_str(self):
         return self._iv_str
-
-    # b'\0'填充密码
-    def null_pad(self, data_to_pad):
-        data_len = len(data_to_pad)
-        # 不超过128位的密码填充长度（字节单位）
-        if data_len <= 16:
-            key_len = 16
-        # 128位以上，不超过192位的密码填充长度（字节单位）
-        elif 16 < data_len <= 24:
-            key_len = 24
-        # 192位以上，不超过256位的密码填充长度（字节单位）
-        elif 24 < data_len <= 32:
-            key_len = 32
-        # 超过256位的密码直接截断到256位长度
-        else:
-            return data_to_pad[:32]
-        # 进行'\0'填充
-        padding_len = key_len - len(data_to_pad)
-        padding = b'\0' * padding_len
-        return data_to_pad + padding
-
-    # 生成密钥
-    def gen_aes_key(self, password, salt, use_md5):
-        # 将密码加盐，防止泄露原始密码
-        password = password + salt if salt else password
-        # use_md5为True值时，将密码转为md5值作为密钥，否则使用b'\0'填充密码
-        if use_md5:
-            md5 = hashlib.md5()
-            md5.update(password.encode('utf-8'))
-            key = md5.digest()
-        else:
-            key = self.null_pad(password.encode('utf-8'))
-
-        return key
 
 
 # 字符串加密解密类
