@@ -177,6 +177,12 @@ class Model(dict, metaclass=ModelMetaclass):
         result_list = cls.find_all(column_key, column_value, encrypt, db_password)
         return result_list[0] if result_list else None
 
+    # 批量增加数据
+    @classmethod
+    def insert_batch(cls, obj_list, encrypt=False, db_password=""):
+        for o in obj_list:
+            o.save(encrypt, db_password)
+
     # 根据列名和值删除数据表中的数据
     @classmethod
     def remove_all(cls, column_key, column_value, encrypt=False, db_password=""):
