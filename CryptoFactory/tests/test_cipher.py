@@ -82,21 +82,24 @@ class TestCrypto(unittest.TestCase):
     def test_DirCrypto(self):
         iv_str = "UEr9si9EynusD5GGVuiqKw=="
         password = 'this is very long password to test file crypto'
-        my_cipher = DirFileCrypto(password, iv_str)
+        my_cipher = DirFileCrypto(password, iv_str, config_file="./dir_test.json")
         my_cipher.encrypt('./testdata/testdir/', './testdata/')
         print(my_cipher.iv_str)
-        my_cipher.decrypt('./testdata/5OiNg8Gq2qWsdob6u5jlhg==/', './testdata/testdecrytdir/')
+        my_cipher.decrypt('./testdata/1186c9556ba1298a7e022d8493ac4601/', './testdata/testdecrytdir/')
         self.assertTrue(filecmp.cmp('./testdata/testdir/test.mp3', './testdata/testdecrytdir/testdir/test.mp3'))
         shutil.rmtree('./testdata/testdecrytdir')
-        shutil.rmtree('./testdata/5OiNg8Gq2qWsdob6u5jlhg==')
+        shutil.rmtree('./testdata/1186c9556ba1298a7e022d8493ac4601')
 
     def test_ListCrypto(self):
         iv_str = "UEr9si9EynusD5GGVuiqKw=="
         password = 'this is very long password to test file crypto'
-        my_cipher = ListCrypto(password, iv_str)
+        my_cipher = ListCrypto(password, iv_str, config_file="./list_test.json")
         my_cipher.encrypt(['./testdata/test.pdf', './testdata/testdir/', './testdata/test.png'], './testdata/testlist/')
         print(my_cipher.iv_str)
-        my_cipher.decrypt(['./testdata/testlist/EQxPeHaoSakp41HUzNLAmQ==', './testdata/testlist/5OiNg8Gq2qWsdob6u5jlhg==/', './testdata/testlist/rrGDhLKxkcB4oTH4ezLOKA=='], './testdata/testdecrytlist/')
+        my_cipher.decrypt(['./testdata/testlist/1186c9556ba1298a7e022d8493ac4601/',
+                           './testdata/testlist/51307180f8f2812085ee59422ca96cf0',
+                           './testdata/testlist/ded5452dd4b0d7c2ba42e47d5d960fc9'],
+                          './testdata/testdecrytlist/')
         self.assertTrue(filecmp.cmp('./testdata/testdir/test.mp3', './testdata/testdecrytlist/testdir/test.mp3'))
         shutil.rmtree('./testdata/testdecrytlist')
         shutil.rmtree('./testdata/testlist')

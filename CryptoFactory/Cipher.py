@@ -1,4 +1,6 @@
 import base64
+import hashlib
+import json
 from functools import partial
 import os
 import re
@@ -8,6 +10,13 @@ from CryptoFactory.Key import gen_aes_key
 
 # 读写文件时，每次读写的数据量
 BUFFER_SIZE = 10 * 1024 * 1024
+
+
+# 字符串MD5生成
+def get_str_md5(string):
+    my_hash = hashlib.md5()
+    my_hash.update(string.encode('utf-8'))
+    return my_hash.hexdigest()
 
 
 # 路径加密解密
@@ -172,8 +181,12 @@ class FileCrypto(BaseCrypto):
 
 # 文件夹加密解密类
 class DirFileCrypto(object):
-    def __init__(self, password, iv_str):
+    def __init__(self, password, iv_str, config_file=None):
         self._iv_str = iv_str
+        # 用来保存文件名MD5值的字典的配置文件
+        self.config_file = config_file
+        # 用来保存文件名MD5值的字典
+        self.file_name_md5_dict = {}
         # 将用password加密文件名和文件
         self.file_crypto = FileCrypto(password, iv_str, use_md5=True, use_urlsafe=True)
         self.string_crypto = StringCrypto(password, iv_str, use_md5=True, use_urlsafe=True)
@@ -201,6 +214,19 @@ class DirFileCrypto(object):
     # 是否被外部中止任务
     def if_stop(self):
         return self.stop_flag
+
+    # 将文件名替换成MD5值,并保存至字典中
+    def file_name_encrypt(self, file_name):
+        file_name_encrypt_str = self.string_crypto.encrypt(file_name)
+        file_name_md5 = get_str_md5(file_name_encrypt_str)
+        self.file_name_md5_dict[file_name_md5] = file_name_encrypt_str
+        return file_name_md5
+
+    # 读取MD5值对应的文件名
+    def file_name_decrypt(self, file_name_md5):
+        file_name_encrypt_str = self.file_name_md5_dict[file_name_md5]
+        file_name = self.string_crypto.decrypt(file_name_encrypt_str)
+        return file_name
 
     # 文件夹处理方法
     def dir_handle(self, input_dir, output_dir, file_handle_func, name_handle_func):
@@ -245,7 +271,10 @@ class DirFileCrypto(object):
         self.stop_flag = False
         self.read_count = 0
         if encrypt_name:
-            self.dir_handle(input_dir, output_dir, self.file_crypto.encrypt, self.string_crypto.encrypt)
+            self.dir_handle(input_dir, output_dir, self.file_crypto.encrypt, self.file_name_encrypt)
+            # 保存文件名MD5值字典
+            with open(self.config_file, "w") as f:
+                json.dump(self.file_name_md5_dict, f)
         else:
             self.dir_handle(input_dir, output_dir, self.file_crypto.encrypt, lambda name: name)
         self.crypto_status = False
@@ -257,7 +286,10 @@ class DirFileCrypto(object):
         self.stop_flag = False
         self.read_count = 0
         if decrypt_name:
-            self.dir_handle(input_dir, output_dir, self.file_crypto.decrypt, self.string_crypto.decrypt)
+            # 读取文件名MD5值字典
+            with open(self.config_file, "r") as f:
+                self.file_name_md5_dict = json.load(f)
+            self.dir_handle(input_dir, output_dir, self.file_crypto.decrypt, self.file_name_decrypt)
         else:
             self.dir_handle(input_dir, output_dir, self.file_crypto.decrypt, lambda name: name)
         self.crypto_status = False
@@ -265,8 +297,8 @@ class DirFileCrypto(object):
 
 # 文件或文件夹列表加密解密类
 class ListCrypto(DirFileCrypto):
-    def __init__(self, password, iv_str):
-        super().__init__(password, iv_str)
+    def __init__(self, password, iv_str, config_file=None):
+        super().__init__(password, iv_str, config_file)
 
     # 文件或文件夹列表处理
     def list_handle(self, input_list, output_dir, file_handle_func, name_handle_func):
@@ -284,10 +316,8 @@ class ListCrypto(DirFileCrypto):
                 output_file_path = os.path.join(real_output_dir, name_handle_func(os.path.basename(real_input)))
                 file_handle_func(real_input, output_file_path)
                 self.read_count += 1
-                print(self.read_count)
             elif os.path.isdir(real_input):
                 self.dir_handle(real_input, real_output_dir, file_handle_func, name_handle_func)
-                print(self.read_count)
 
     # 加密input_list内的所有文件或文件夹到output_dir
     # encrypt_name控制是否加密文件或文件夹名
@@ -296,7 +326,10 @@ class ListCrypto(DirFileCrypto):
         self.stop_flag = False
         self.read_count = 0
         if encrypt_name:
-            self.list_handle(input_list, output_dir, self.file_crypto.encrypt, self.string_crypto.encrypt)
+            self.list_handle(input_list, output_dir, self.file_crypto.encrypt, self.file_name_encrypt)
+            # 保存文件名MD5值字典
+            with open(self.config_file, "w") as f:
+                json.dump(self.file_name_md5_dict, f)
         else:
             self.list_handle(input_list, output_dir, self.file_crypto.encrypt, lambda name: name)
         self.crypto_status = False
@@ -308,7 +341,10 @@ class ListCrypto(DirFileCrypto):
         self.stop_flag = False
         self.read_count = 0
         if decrypt_name:
-            self.list_handle(input_list, output_dir, self.file_crypto.decrypt, self.string_crypto.decrypt)
+            # 读取文件名MD5值字典
+            with open(self.config_file, "r") as f:
+                self.file_name_md5_dict = json.load(f)
+            self.list_handle(input_list, output_dir, self.file_crypto.decrypt, self.file_name_decrypt)
         else:
             self.list_handle(input_list, output_dir, self.file_crypto.decrypt, lambda name: name)
         self.crypto_status = False

@@ -105,3 +105,5 @@ venv.bak/
 
 # tests data
 testdata/
+dir_test.json
+list_test.json
