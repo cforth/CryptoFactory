@@ -273,6 +273,10 @@ class DirFileCrypto(object):
         if encrypt_name:
             self.dir_handle(input_dir, output_dir, self.file_crypto.encrypt, self.file_name_encrypt)
             # 保存文件名MD5值字典
+            if not self.config_file:
+                input_dir_name = os.path.basename(os.path.abspath(input_dir))
+                encrypt_config_name = self.file_name_encrypt(input_dir_name) + ".json"
+                self.config_file = os.path.join(os.path.dirname(os.path.abspath(input_dir)), encrypt_config_name)
             with open(self.config_file, "w") as f:
                 json.dump(self.file_name_md5_dict, f)
         else:
@@ -287,6 +291,10 @@ class DirFileCrypto(object):
         self.read_count = 0
         if decrypt_name:
             # 读取文件名MD5值字典
+            if not self.config_file:
+                input_dir_name = os.path.basename(os.path.abspath(input_dir))
+                encrypt_config_name = self.file_name_encrypt(input_dir_name) + ".json"
+                self.config_file = os.path.join(os.path.dirname(os.path.abspath(input_dir)), encrypt_config_name)
             with open(self.config_file, "r") as f:
                 self.file_name_md5_dict = json.load(f)
             self.dir_handle(input_dir, output_dir, self.file_crypto.decrypt, self.file_name_decrypt)
@@ -297,7 +305,7 @@ class DirFileCrypto(object):
 
 # 文件或文件夹列表加密解密类
 class ListCrypto(DirFileCrypto):
-    def __init__(self, password, iv_str, config_file=None):
+    def __init__(self, password, iv_str, config_file):
         super().__init__(password, iv_str, config_file)
 
     # 文件或文件夹列表处理
