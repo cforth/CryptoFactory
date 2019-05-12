@@ -80,6 +80,7 @@ class TestCrypto(unittest.TestCase):
         self.assertTrue(filecmp.cmp('./testdata/testdir/test.mp3', './testdata/testdecrytdir/testdir/test.mp3'))
         shutil.rmtree('./testdata/testdecrytdir')
         shutil.rmtree('./testdata/1186c9556ba1298a7e022d8493ac4601')
+        os.remove('./testdata/1186c9556ba1298a7e022d8493ac4601.json')
 
     def test_ListCrypto(self):
         iv_str = "UEr9si9EynusD5GGVuiqKw=="
@@ -93,6 +94,7 @@ class TestCrypto(unittest.TestCase):
         self.assertTrue(filecmp.cmp('./testdata/testdir/test.mp3', './testdata/testdecrytlist/testdir/test.mp3'))
         shutil.rmtree('./testdata/testdecrytlist')
         shutil.rmtree('./testdata/testlist')
+        os.remove('./list_test.json')
 
 
 if __name__ == '__main__':
