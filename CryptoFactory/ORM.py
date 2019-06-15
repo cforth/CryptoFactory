@@ -3,7 +3,7 @@ import logging
 import os
 import base64
 import hashlib
-from CryptoFactory.Cipher import FileCrypto
+from CryptoFactory.CFCryptoX import FileCrypto
 
 logging.basicConfig(level=logging.ERROR)
 

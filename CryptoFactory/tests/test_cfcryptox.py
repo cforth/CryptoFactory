@@ -1,4 +1,4 @@
-from CryptoFactory.Cipher import *
+from CryptoFactory.CFCryptoX import *
 import os
 import filecmp
 import unittest
@@ -69,7 +69,11 @@ class TestCrypto(unittest.TestCase):
         my_cipher.decrypt('./testdata/test.mp4.aes', './testdata/aes_test.mp4')
         self.assertTrue(filecmp.cmp('./testdata/test.mp4', './testdata/aes_test.mp4'))
         os.remove('./testdata/aes_test.mp4')
+        # 测试错误的密码，验证头部标识不对后不会解密
+        fail_cipher = FileCrypto("wrong password", iv_str)
+        fail_cipher.decrypt('./testdata/test.mp4.aes', './testdata/aes_test_wrong.mp4')
         os.remove('./testdata/test.mp4.aes')
+
 
     def test_DirCrypto(self):
         iv_str = "UEr9si9EynusD5GGVuiqKw=="

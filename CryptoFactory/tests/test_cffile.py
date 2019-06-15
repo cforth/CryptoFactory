@@ -1,6 +1,6 @@
 import os
 import unittest
-from CryptoFactory.File import *
+from CryptoFactory.CFFile import *
 
 
 class TestFile(unittest.TestCase):

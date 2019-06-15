@@ -10,6 +10,8 @@ from CryptoFactory.Key import gen_aes_key
 
 # 读写文件时，每次读写的数据量
 BUFFER_SIZE = 10 * 1024 * 1024
+# 文件头加密标识，验证密码是否正确
+MAGIC_HEAD_TEXT: bytes = b'cf_crypto_x'
 
 
 # 字符串MD5生成
@@ -26,9 +28,21 @@ def dir_path_handle(path_string, name_handle_func):
     return '/'.join(crypto_list)
 
 
+# 通过解密加密文件开头128个字节的块是否与加密标识相符，来判断密码是否正确
+def verify_password(password: str, iv: str, data_head: bytes) -> bool:
+    try:
+        decrypt_head = ByteCrypto(password, iv).decrypt(data_head)
+        return True if decrypt_head[:len(MAGIC_HEAD_TEXT)] == MAGIC_HEAD_TEXT else False
+    except Exception as e:
+        print('Exception: ', e)
+        print("Decrypt Password Error!")
+        return False
+
+
 # 加密解密基类，设置密码和其他参数
 class BaseCrypto(object):
     def __init__(self, password, iv_str=None, salt=None, use_md5=False, use_urlsafe=False, buffer_size=BUFFER_SIZE):
+        self.password = password
         # 生成密钥时，选择是否加盐，是否使用md5值
         self.key = gen_aes_key(password, salt, use_md5)
         # 使用base64模块将字节转与字符串互相转换时，是否用urlsafe模式
@@ -136,7 +150,7 @@ class FileCrypto(BaseCrypto):
         return self.stop_flag
 
     # 文件处理方法
-    def handle(self, file_path, output_file_path, data_handle_func, data_end_handle_func):
+    def handle(self, file_path, output_file_path, crypto_option):
         if not os.path.exists(file_path):
             raise ValueError('Input file path not exists: %s ', file_path)
         elif os.path.exists(output_file_path):
@@ -145,9 +159,32 @@ class FileCrypto(BaseCrypto):
         file_len = os.path.getsize(file_path)
         self.crypto_status = True
         self.stop_flag = False
+        # 设置加密或者解密
+        self.cipher = self.gen_cipher()
+        if crypto_option == "encrypt":
+            data_handle_func = self.cipher.encrypt
+            # 读取到文件尾部时，执行尾部补位操作后加密
+            data_end_handle_func = lambda d: self.cipher.encrypt(pad(d, AES.block_size))
+            with open(output_file_path, 'wb') as out:
+                data_head = ByteCrypto(self.password, iv_str=self.iv_str).encrypt(MAGIC_HEAD_TEXT)
+                out.write(data_head)
+        elif crypto_option == "decrypt":
+            data_handle_func = self.cipher.decrypt
+            # 读取到文件尾部时，执行解密后尾部去除补位
+            data_end_handle_func = lambda d: unpad(self.cipher.decrypt(d), AES.block_size)
+        else:
+            return
+
         try:
             with open(file_path, 'rb') as f:
                 self.read_len = 0
+                # 如果是解密模式，验证密码是否正确
+                if crypto_option == "decrypt":
+                    self.read_len += 16
+                    head_data = f.read(16)
+                    if not verify_password(self.password, self.iv_str, head_data):
+                        return
+                # 进行加密或解密操作
                 data_iter = iter(partial(f.read, self.buffer_size), b'')
                 for data in data_iter:
                     if not self.crypto_status:
@@ -165,18 +202,10 @@ class FileCrypto(BaseCrypto):
             self.crypto_status = False
 
     def encrypt(self, file_path, output_file_path):
-        self.cipher = self.gen_cipher()
-        data_handle_func = self.cipher.encrypt
-        # 读取到文件尾部时，执行尾部补位操作后加密
-        data_end_handle_func = lambda d: self.cipher.encrypt(pad(d, AES.block_size))
-        self.handle(file_path, output_file_path, data_handle_func, data_end_handle_func)
+        self.handle(file_path, output_file_path, "encrypt")
 
     def decrypt(self, file_path, output_file_path):
-        self.cipher = self.gen_cipher()
-        data_handle_func = self.cipher.decrypt
-        # 读取到文件尾部时，执行解密后尾部去除补位
-        data_end_handle_func = lambda d: unpad(self.cipher.decrypt(d), AES.block_size)
-        self.handle(file_path, output_file_path, data_handle_func, data_end_handle_func)
+        self.handle(file_path, output_file_path, "decrypt")
 
 
 # 文件夹加密解密类
