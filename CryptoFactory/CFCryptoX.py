@@ -8,23 +8,27 @@ from Crypto.Cipher import AES
 from Crypto.Util.Padding import pad, unpad
 from CryptoFactory.Key import gen_aes_key
 
-# 读写文件时，每次读写的数据量
-BUFFER_SIZE = 10 * 1024 * 1024
+# 一个AES加密块的字节长度为16字节(128位)
+BLOCK_SIZE: int = 16
+# 读写文件时，每次读写的字节数
+BUFFER_SIZE: int = 10 * 1024 * 1024
 # 文件头加密标识，验证密码是否正确
-MAGIC_HEAD_TEXT: bytes = b'cf_crypto_x'
+ENCRYPT_MARK: bytes = b'CF_CRYPTO_X'
+# 默认的初始化向量，经过urlsafe_b64encode编码后字符串
+DEFAULT_IV_STR = "UEr9si9EynusD5GGVuiqKw=="
 
 
 # 字符串MD5生成
-def get_str_md5(string):
+def get_str_md5(string: str, encoding='utf-8') -> str:
     my_hash = hashlib.md5()
-    my_hash.update(string.encode('utf-8'))
+    my_hash.update(string.encode(encoding))
     return my_hash.hexdigest()
 
 
 # 路径加密解密
-def dir_path_handle(path_string, name_handle_func):
-    name_list = re.split(r'[\\/]', path_string)
-    crypto_list = [name_handle_func(s) for s in name_list]
+def folder_path_convert(folder_path: str, name_convert_func: callable) -> str:
+    name_list = re.split(r'[\\/]', folder_path)
+    crypto_list = [name_convert_func(s) for s in name_list]
     return '/'.join(crypto_list)
 
 
@@ -32,7 +36,7 @@ def dir_path_handle(path_string, name_handle_func):
 def verify_password(password: str, iv: str, data_head: bytes) -> bool:
     try:
         decrypt_head = ByteCrypto(password, iv).decrypt(data_head)
-        return True if decrypt_head[:len(MAGIC_HEAD_TEXT)] == MAGIC_HEAD_TEXT else False
+        return True if decrypt_head[:len(ENCRYPT_MARK)] == ENCRYPT_MARK else False
     except Exception as e:
         print('Exception: ', e)
         print("Decrypt Password Error!")
@@ -84,8 +88,8 @@ class BaseCrypto(object):
 
 # 字符串加密解密类
 class StringCrypto(BaseCrypto):
-    def __init__(self, password, iv_str=None, salt=None, use_md5=False, use_urlsafe=False):
-        super().__init__(password, iv_str, salt, use_md5, use_urlsafe)
+    def __init__(self, password, iv_str=DEFAULT_IV_STR):
+        super().__init__(password, iv_str=iv_str, use_md5=True, use_urlsafe=True)
 
     # 加密字符串
     def encrypt(self, original_string):
@@ -113,8 +117,8 @@ class StringCrypto(BaseCrypto):
 
 # 将二进制数据加密或解密，返回二进制数据(一次性读入内存加密，用于小文件)
 class ByteCrypto(BaseCrypto):
-    def __init__(self, password, iv_str=None, salt=None, use_md5=False, use_urlsafe=False):
-        super().__init__(password, iv_str, salt, use_md5, use_urlsafe)
+    def __init__(self, password, iv_str=DEFAULT_IV_STR):
+        super().__init__(password, iv_str=iv_str, use_md5=True, use_urlsafe=True)
 
     def encrypt(self, original_data):
         self.cipher = self.gen_cipher()
@@ -125,10 +129,10 @@ class ByteCrypto(BaseCrypto):
         return unpad(self.cipher.decrypt(data_to_decrypt), AES.block_size)
 
 
-# 将文件加密或解密，指定block_size作为每次读取写入的数据量，用于大文件
+# 将文件加密或解密，指定BUFFER_SIZE作为每次读取写入的字节数，用于大文件
 class FileCrypto(BaseCrypto):
-    def __init__(self, password, iv_str=None, salt=None, use_md5=False, use_urlsafe=False, buffer_size=BUFFER_SIZE):
-        super().__init__(password, iv_str, salt, use_md5, use_urlsafe, buffer_size)
+    def __init__(self, password, iv_str=DEFAULT_IV_STR):
+        super().__init__(password, iv_str=iv_str, use_md5=True, use_urlsafe=True)
         # 加密解密的状态
         self.crypto_status = False
         # 已经读取的数据长度
@@ -166,7 +170,7 @@ class FileCrypto(BaseCrypto):
             # 读取到文件尾部时，执行尾部补位操作后加密
             data_end_handle_func = lambda d: self.cipher.encrypt(pad(d, AES.block_size))
             with open(output_file_path, 'wb') as out:
-                data_head = ByteCrypto(self.password, iv_str=self.iv_str).encrypt(MAGIC_HEAD_TEXT)
+                data_head = ByteCrypto(self.password, iv_str=self.iv_str).encrypt(ENCRYPT_MARK)
                 out.write(data_head)
         elif crypto_option == "decrypt":
             data_handle_func = self.cipher.decrypt
@@ -180,8 +184,8 @@ class FileCrypto(BaseCrypto):
                 self.read_len = 0
                 # 如果是解密模式，验证密码是否正确
                 if crypto_option == "decrypt":
-                    self.read_len += 16
-                    head_data = f.read(16)
+                    self.read_len += BLOCK_SIZE
+                    head_data = f.read(BLOCK_SIZE)
                     if not verify_password(self.password, self.iv_str, head_data):
                         return
                 # 进行加密或解密操作
@@ -210,15 +214,15 @@ class FileCrypto(BaseCrypto):
 
 # 文件夹加密解密类
 class DirFileCrypto(object):
-    def __init__(self, password, iv_str, config_file=None):
+    def __init__(self, password, config_file=None, iv_str=DEFAULT_IV_STR):
         self._iv_str = iv_str
         # 用来保存文件名MD5值的字典的配置文件
         self.config_file = config_file
         # 用来保存文件名MD5值的字典
         self.file_name_md5_dict = {}
         # 将用password加密文件名和文件
-        self.file_crypto = FileCrypto(password, iv_str, use_md5=True, use_urlsafe=True)
-        self.string_crypto = StringCrypto(password, iv_str, use_md5=True, use_urlsafe=True)
+        self.file_crypto = FileCrypto(password, iv_str)
+        self.string_crypto = StringCrypto(password, iv_str)
         # 加密解密的状态
         self.crypto_status = False
         # 已经加密或解密的文件个数
@@ -279,7 +283,7 @@ class DirFileCrypto(object):
         for path, subdir, files in os.walk(input_dir):
 
             # 将当前路径path转为加密后的文件夹路径now_output_path
-            now_output_path = dir_path_handle(os.path.abspath(path)[root_dir_index:], name_handle_func)
+            now_output_path = folder_path_convert(os.path.abspath(path)[root_dir_index:], name_handle_func)
             for d in subdir:
                 real_output_subdir = os.path.join(real_output_dir, now_output_path, name_handle_func(d))
                 if not os.path.exists(real_output_subdir):
@@ -334,8 +338,8 @@ class DirFileCrypto(object):
 
 # 文件或文件夹列表加密解密类
 class ListCrypto(DirFileCrypto):
-    def __init__(self, password, iv_str, config_file):
-        super().__init__(password, iv_str, config_file)
+    def __init__(self, password, config_file, iv_str=DEFAULT_IV_STR):
+        super().__init__(password, config_file, iv_str)
 
     # 文件或文件夹列表处理
     def list_handle(self, input_list, output_dir, file_handle_func, name_handle_func):
