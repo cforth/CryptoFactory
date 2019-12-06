@@ -66,6 +66,12 @@ class TestCrypto(unittest.TestCase):
         os.remove('./testdata/my_rsa.pub')
         os.remove('./testdata/my_rsa')
 
+    def test_DirNameCrypto(self):
+        my_cipher = DirNameCrypto('crypto dir', './dir_name.json')
+        my_cipher.encrypt('./testdata/')
+        my_cipher.decrypt('./testdata/')
+        os.remove('./dir_name.json')
+
 
 if __name__ == '__main__':
     unittest.main()
