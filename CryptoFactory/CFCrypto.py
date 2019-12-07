@@ -406,12 +406,18 @@ class DirNameCrypto(object):
         for path, subdir, files in os.walk(input_dir, topdown=False):
             for d in subdir:
                 original_dir = os.path.join(os.path.abspath(path), d)
-                rename_dir = os.path.join(os.path.abspath(path), name_handle_func(d))
-                os.rename(original_dir, rename_dir)
+                try:
+                    rename_dir = os.path.join(os.path.abspath(path), name_handle_func(d))
+                    os.rename(original_dir, rename_dir)
+                except Exception as e:
+                    logging.exception(e)
             for f in files:
                 original_file = os.path.join(os.path.abspath(path), f)
-                rename_file = os.path.join(os.path.abspath(path), name_handle_func(f))
-                os.rename(original_file, rename_file)
+                try:
+                    rename_file = os.path.join(os.path.abspath(path), name_handle_func(f))
+                    os.rename(original_file, rename_file)
+                except Exception as e:
+                    logging.exception(e)
 
     def encrypt(self, input_dir):
         DirNameCrypto.dir_handle(input_dir, self.file_name_encrypt)
