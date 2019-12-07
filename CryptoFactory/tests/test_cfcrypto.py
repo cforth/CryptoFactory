@@ -67,10 +67,35 @@ class TestCrypto(unittest.TestCase):
         os.remove('./testdata/my_rsa')
 
     def test_DirNameCrypto(self):
+        # 复制原测试文件夹
+        a_dir_path = os.path.abspath('./testdata')
+        b_dir_path = os.path.abspath('./testdata_copy/')
+        shutil.copytree(a_dir_path, b_dir_path)
         my_cipher = DirNameCrypto('crypto dir', './dir_name.json')
-        my_cipher.encrypt('./testdata/')
-        my_cipher.decrypt('./testdata/')
+        my_cipher.encrypt(a_dir_path)
+        my_cipher.decrypt(a_dir_path)
+        # 保存两个测试文件夹里的目录与文件名称
+        a_dir_list = []
+        b_dir_list = []
+        a_index = len(a_dir_path)
+        b_index = len(b_dir_path)
+        for path, subdir, files in os.walk(a_dir_path, topdown=False):
+            for d in subdir:
+                a_dir_list.append(os.path.join(os.path.abspath(path)[a_index:], d))
+            for f in files:
+                a_dir_list.append(os.path.join(os.path.abspath(path)[a_index:], f))
+
+        for path, subdir, files in os.walk(b_dir_path, topdown=False):
+            for d in subdir:
+                b_dir_list.append(os.path.join(os.path.abspath(path)[b_index:], d))
+            for f in files:
+                b_dir_list.append(os.path.join(os.path.abspath(path)[b_index:], f))
+
+        a_dir_list.sort()
+        b_dir_list.sort()
+        self.assertEqual(a_dir_list, b_dir_list)
         os.remove('./dir_name.json')
+        shutil.rmtree(b_dir_path)
 
 
 if __name__ == '__main__':
