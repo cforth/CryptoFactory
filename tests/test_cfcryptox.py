@@ -54,6 +54,7 @@ class TestCrypto(unittest.TestCase):
         password = 'this is very long password to test file crypto'
         my_cipher = DirFileCrypto(password)
         my_cipher.encrypt('./testdata/testdir/', './testdata/')
+        my_cipher = DirFileCrypto(password)
         my_cipher.decrypt('./testdata/1186c9556ba1298a7e022d8493ac4601/', './testdata/testdecrytdir/')
         self.assertTrue(filecmp.cmp('./testdata/testdir/test.mp3', './testdata/testdecrytdir/testdir/test.mp3'))
         shutil.rmtree('./testdata/testdecrytdir')

@@ -326,8 +326,8 @@ class DirFileCrypto(object):
             # 读取文件名MD5值字典
             if not self.config_file:
                 input_dir_name = os.path.basename(os.path.abspath(input_dir))
-                encrypt_config_name = self.file_name_encrypt(input_dir_name) + ".json"
-                self.config_file = os.path.join(os.path.dirname(os.path.abspath(input_dir)), encrypt_config_name)
+                config_name = input_dir_name + ".json"
+                self.config_file = os.path.join(os.path.dirname(os.path.abspath(input_dir)), config_name)
             with open(self.config_file, "r") as f:
                 self.file_name_md5_dict = json.load(f)
             self.dir_handle(input_dir, output_dir, self.file_crypto.decrypt, self.file_name_decrypt)
