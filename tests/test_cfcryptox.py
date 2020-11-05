@@ -15,11 +15,27 @@ class TestCrypto(unittest.TestCase):
 
     def test_ByteCrypto(self):
         my_cipher = ByteCrypto('this is very long password to test file crypto')
+        encrypt_data = my_cipher.encrypt('./testdata/test.png')
+        with open('./testdata/test.png.aes', 'wb') as f_to:
+            f_to.write(encrypt_data)
+
+        my_cipher = ByteCrypto('this is very long password to test file crypto')
+        decrypt_data = my_cipher.decrypt('./testdata/test.png.aes')
+        with open('./testdata/aes_test.png', 'wb') as f_to:
+            f_to.write(decrypt_data)
+
+        self.assertTrue(filecmp.cmp('./testdata/test.png', './testdata/aes_test.png'))
+        os.remove('./testdata/aes_test.png')
+        os.remove('./testdata/test.png.aes')
+
+    def test_BinaryDataCrypto(self):
+        my_cipher = BinaryDataCrypto('this is very long password to test file crypto')
         with open('./testdata/test.png', 'rb') as f_from:
             encrypt_data = my_cipher.encrypt(f_from.read())
             with open('./testdata/test.png.aes', 'wb') as f_to:
                 f_to.write(encrypt_data)
 
+        my_cipher = BinaryDataCrypto('this is very long password to test file crypto')
         with open('./testdata/test.png.aes', 'rb') as f_from:
             decrypt_data = my_cipher.decrypt(f_from.read())
             with open('./testdata/aes_test.png', 'wb') as f_to:
