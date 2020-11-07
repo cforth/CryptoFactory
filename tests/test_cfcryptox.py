@@ -69,13 +69,20 @@ class TestCrypto(unittest.TestCase):
     def test_DirCrypto(self):
         password = 'this is very long password to test file crypto'
         my_cipher = DirFileCrypto(password)
-        my_cipher.encrypt('./testdata/testdir/', './testdata/')
+        my_cipher.encrypt('./testdata/testdir/', './testdata/', name_md5=True)
         my_cipher = DirFileCrypto(password)
-        my_cipher.decrypt('./testdata/1186c9556ba1298a7e022d8493ac4601/', './testdata/testdecrytdir/')
+        my_cipher.decrypt('./testdata/1186c9556ba1298a7e022d8493ac4601/', './testdata/testdecrytdir/', name_md5=True)
         self.assertTrue(filecmp.cmp('./testdata/testdir/test.mp3', './testdata/testdecrytdir/testdir/test.mp3'))
         shutil.rmtree('./testdata/testdecrytdir')
         shutil.rmtree('./testdata/1186c9556ba1298a7e022d8493ac4601')
         os.remove('./testdata/1186c9556ba1298a7e022d8493ac4601.json')
+        my_cipher = DirFileCrypto(password)
+        my_cipher.encrypt('./testdata/testdir/', './testdata/')
+        my_cipher = DirFileCrypto(password)
+        my_cipher.decrypt('./testdata/5OiNg8Gq2qWsdob6u5jlhg==/', './testdata/testdecrytdir/')
+        self.assertTrue(filecmp.cmp('./testdata/testdir/test.mp3', './testdata/testdecrytdir/testdir/test.mp3'))
+        shutil.rmtree('./testdata/testdecrytdir')
+        shutil.rmtree('./testdata/5OiNg8Gq2qWsdob6u5jlhg==/')
 
     def test_ListCrypto(self):
         password = 'this is very long password to test file crypto'
