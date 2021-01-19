@@ -54,35 +54,6 @@ class TestORM(unittest.TestCase):
         self.assertFalse(User.has_table())
         os.remove("User.db")
 
-    def test_encrypt_operate(self):
-        en_pass_dict = {'encrypt': True, 'db_password': 'password123456'}
-
-        if not CryptoUser.has_table(**en_pass_dict):
-            CryptoUser.new_table(**en_pass_dict)
-        self.assertFalse(CryptoUser.has_item("username", 'xiaoming', **en_pass_dict))
-
-        u = CryptoUser(id=1, username='xiaoming', email='xiaoming@gmail.com', password='hello')
-        if not CryptoUser.has_item("id", u.id, **en_pass_dict):
-            u.save(**en_pass_dict)
-        self.assertTrue(CryptoUser.has_item("username", 'xiaoming', **en_pass_dict))
-
-        u_list = [CryptoUser(id=2, username='xxx', email='xxx@gmail.com', password='world'),
-                  CryptoUser(id=3, username='yyy', email='yyy@gmail.com', password='sdgfdg'),
-                  CryptoUser(id=4, username='xxx', email='xxx2@gmail.com', password='world2')]
-        CryptoUser.insert_batch(u_list, **en_pass_dict)
-
-        find_result = CryptoUser.find_all("username", "xxx", **en_pass_dict)
-        self.assertEqual(len(find_result), 2)
-
-        remove_result = CryptoUser.remove_all('username', "xxx", **en_pass_dict)
-        find_result = CryptoUser.find_all("username", "xxx", **en_pass_dict)
-        self.assertEqual(remove_result, 2)
-        self.assertFalse(find_result)
-
-        CryptoUser.delete_table(**en_pass_dict)
-        self.assertFalse(CryptoUser.has_table(**en_pass_dict))
-        os.remove("CryptoUser.db")
-
 
 if __name__ == '__main__':
     unittest.main()
